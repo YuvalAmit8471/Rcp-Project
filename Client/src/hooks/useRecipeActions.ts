@@ -5,12 +5,13 @@
 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import type { GeneratedRecipe } from "@/services/aiService";
 import { recipeApi } from "@/services/recipeApi";
-
 export const useRecipeActions = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   /**
    * Copy recipe text to clipboard
@@ -65,6 +66,9 @@ Category: ${recipe.category}
         title: "Recipe saved!",
         description: "The AI-generated recipe was saved to your recipes.",
       });
+      // Redirect to My Recipes page after saving
+
+      navigate("/my-recipes");
     } catch (error) {
       toast({
         title: "Save failed",
