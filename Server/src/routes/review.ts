@@ -5,10 +5,14 @@ import { authenticateToken } from "../middleware/auth";
 const router = express.Router();
 
 // Create a review for a recipe (requires authentication)
-router.post("/recipe/:id", authenticateToken, ReviewController.createReview);
+router.post(
+  "/recipe/:recipeId",
+  authenticateToken,
+  ReviewController.createReview
+);
 
 // Get all reviews for a specific recipe (public)
-router.get("/recipe/:id", ReviewController.getRecipeReviews);
+router.get("/recipe/:recipeId", ReviewController.getRecipeReviews);
 
 // Get a specific review by ID (public)
 router.get("/:id", ReviewController.getReviewById);

@@ -13,6 +13,16 @@ const ReviewController = {
       const { rating, comment } = req.body;
       const userId = req.user?.userId;
 
+      // Debug logging
+      console.log("=== CREATE REVIEW DEBUG ===");
+      console.log("recipeId from params:", recipeId);
+      console.log("recipeId type:", typeof recipeId);
+      console.log("recipeId length:", recipeId?.length);
+      console.log("rating:", rating);
+      console.log("comment:", comment);
+      console.log("userId:", userId);
+      console.log("========================");
+
       // Validate input
       if (!rating || !comment) {
         return res.status(400).json({
@@ -27,7 +37,13 @@ const ReviewController = {
       }
 
       // Check if recipe exists
+      console.log("Looking for recipe with ID:", recipeId);
       const recipe = await RecipeModel.findById(recipeId);
+      console.log("Recipe found:", recipe ? "YES" : "NO");
+      if (recipe) {
+        console.log("Recipe title:", recipe.title);
+      }
+      
       if (!recipe) {
         return res.status(404).json({ message: "Recipe not found" });
       }
@@ -62,7 +78,7 @@ const ReviewController = {
       await newReview.save();
 
       // Populate user and recipe data for response
-      await newReview.populate("user", "username email");
+      await newReview.populate("user", "name email");
       await newReview.populate("recipe", "title");
 
       res.status(201).json({
@@ -91,7 +107,7 @@ const ReviewController = {
 
       // Get reviews with pagination
       const reviews = await Review.find({ recipe: recipeId })
-        .populate("user", "username email")
+        .populate("user", "name email")
         .sort({ createdDate: -1 })
         .skip(skip)
         .limit(limit);
@@ -136,7 +152,7 @@ const ReviewController = {
   // Update a review (only by the user who created it)
   async updateReview(req: AuthRequest, res: Response) {
     try {
-      const { reviewId } = req.params;
+      const { id: reviewId } = req.params;
       const { rating, comment } = req.body;
       const userId = req.user?.userId;
 
@@ -176,7 +192,7 @@ const ReviewController = {
         updateData,
         { new: true, runValidators: true }
       )
-        .populate("user", "username email")
+        .populate("user", "name email")
         .populate("recipe", "title");
 
       res.status(200).json({
@@ -192,7 +208,7 @@ const ReviewController = {
   // Delete a review (only by the user who created it)
   async deleteReview(req: AuthRequest, res: Response) {
     try {
-      const { reviewId } = req.params;
+      const { id: reviewId } = req.params;
       const userId = req.user?.userId;
 
       // Find the review
@@ -223,10 +239,10 @@ const ReviewController = {
   // Get a specific review by ID
   async getReviewById(req: AuthRequest, res: Response) {
     try {
-      const { reviewId } = req.params;
+      const { id: reviewId } = req.params;
 
       const review = await Review.findById(reviewId)
-        .populate("user", "username email")
+        .populate("user", "name email")
         .populate("recipe", "title");
 
       if (!review) {
