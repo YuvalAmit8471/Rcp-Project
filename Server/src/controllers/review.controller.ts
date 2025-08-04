@@ -13,16 +13,6 @@ const ReviewController = {
       const { rating, comment } = req.body;
       const userId = req.user?.userId;
 
-      // Debug logging
-      console.log("=== CREATE REVIEW DEBUG ===");
-      console.log("recipeId from params:", recipeId);
-      console.log("recipeId type:", typeof recipeId);
-      console.log("recipeId length:", recipeId?.length);
-      console.log("rating:", rating);
-      console.log("comment:", comment);
-      console.log("userId:", userId);
-      console.log("========================");
-
       // Validate input
       if (!rating || !comment) {
         return res.status(400).json({
@@ -37,13 +27,7 @@ const ReviewController = {
       }
 
       // Check if recipe exists
-      console.log("Looking for recipe with ID:", recipeId);
       const recipe = await RecipeModel.findById(recipeId);
-      console.log("Recipe found:", recipe ? "YES" : "NO");
-      if (recipe) {
-        console.log("Recipe title:", recipe.title);
-      }
-      
       if (!recipe) {
         return res.status(404).json({ message: "Recipe not found" });
       }
