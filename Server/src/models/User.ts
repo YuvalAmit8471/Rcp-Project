@@ -1,31 +1,38 @@
-import mongoose, { Document, Schema } from 'mongoose'
+import mongoose, { Document, Schema } from "mongoose";
 
 interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
-  email: string,
-  name: string,
-  password: string,
+  email: string;
+  name: string;
+  password: string;
   createdAt: Date;
   updatedAt: Date;
+  savedRecipes: mongoose.Types.ObjectId[];
+  savedDemoRecipes?: string[]; // מתכונים דמו שמורים
 }
 
-const userSchema = new Schema<IUser>({
-  email: {
-    type: String,
-    require: true, 
-    unique: true
+const userSchema = new Schema<IUser>(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    name: {
+      type: String,
+      required: true,
+    },
+    savedRecipes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Recipe" }],
+    savedDemoRecipes: [{ type: String }], // מערך של IDs של מתכונים דמו
   },
-  password: {
-    type: String,
-    require: true, 
-  },
-  name: {
-    type: String,
-    require: true, 
+  {
+    timestamps: true,
   }
-},{
-  timestamps: true
-})
+);
 
-const User = mongoose.model<IUser>("User", userSchema)
+const User = mongoose.model<IUser>("User", userSchema);
 export default User;

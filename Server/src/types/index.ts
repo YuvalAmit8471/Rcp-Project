@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 
 export interface User {
   id: string;
@@ -6,16 +6,6 @@ export interface User {
   password: string;
   name: string;
   createdAt: Date;
-}
-
-export interface Book {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  publishedYear: number;
-  createdAt: Date;
-  userId: string;
 }
 
 export interface LoginRequest {
@@ -33,17 +23,3 @@ export interface AuthPayload {
   userId: Types.ObjectId;
   email: string;
 }
-
-export interface CreateBookRequest {
-  title: string;
-  author: string;
-  description: string;
-  publishedYear: number;
-}
-
-export interface UpdateBookRequest {
-  title?: string;
-  author?: string;
-  description?: string;
-  publishedYear?: number;
-} 

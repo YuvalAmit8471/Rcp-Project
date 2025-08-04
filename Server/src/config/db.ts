@@ -6,16 +6,16 @@ const MONGODB_URI = process.env.MONGODB_URI as string;
 
 if (!MONGODB_URI) {
   throw new Error(
-    "Hey Dev, Yo ididnt provided thr mongodb uri string in the .env file"
+    "MongoDB URI is required. Please provide the MONGODB_URI in the .env file"
   );
 }
 
 const connectDB = async () => {
   try {
     await mongoose.connect(MONGODB_URI);
-    console.log("Succefully Connected to DB");
+    console.log("Successfully Connected to DB");
   } catch (error) {
-    throw new Error("we've got an issue while connecting to the DB");
+    throw new Error("Error connecting to the database");
   }
 };
 
