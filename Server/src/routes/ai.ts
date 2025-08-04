@@ -1,42 +1,51 @@
 import express from "express";
-import OpenAI from "openai";
-import dotenv from "dotenv";
 
-dotenv.config();
 const router = express.Router();
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 router.post("/generate", async (req, res) => {
   const { prompt } = req.body;
-
   if (!prompt) {
     return res.status(400).json({ message: "Missing prompt" });
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
+    const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemma3:4b",
+        prompt: `Create a detailed recipe based on this request: "${prompt}".\n\nPlease respond with a JSON object in exactly this format:\n{\n  "title": "Recipe Name",\n  "description": "Brief description of the recipe",\n  "ingredients": ["ingredient 1", "ingredient 2", ...],\n  "instructions": ["step 1", "step 2", ...],\n  "cookTime": "XX min",\n  "servings": number,\n  "difficulty": "Easy/Medium/Hard",\n  "category": "Main/Dessert/Appetizer/etc"\n}\n\nMake sure the response is valid JSON only, no additional text.`,
+        stream: false,
+      }),
     });
 
-    const aiText = response.choices[0]?.message?.content;
-
-    if (!aiText) {
-      return res.status(500).json({ message: "No response from AI" });
+    if (!ollamaResponse.ok) {
+      const errorText = await ollamaResponse.text();
+      return res
+        .status(500)
+        .json({ message: "Ollama error", error: errorText });
     }
 
-    res.json({ success: true, result: aiText });
+    const data = (await ollamaResponse.json()) as { response: string };
+    // Remove markdown code block if present (Ollama sometimes wraps JSON in ```json ... ```)
+    let responseText = data.response.trim();
+    if (responseText.startsWith("```json")) {
+      responseText = responseText
+        .replace(/^```json/, "")
+        .replace(/```$/, "")
+        .trim();
+    } else if (responseText.startsWith("```")) {
+      responseText = responseText
+        .replace(/^```/, "")
+        .replace(/```$/, "")
+        .trim();
+    }
+    res.json({ success: true, result: responseText });
   } catch (error) {
-    console.error("OpenAI error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
-    res
-      .status(500)
-      .json({ message: "AI generation failed", error: errorMessage });
+    res.status(500).json({
+      message: "AI generation failed",
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 

@@ -21,57 +21,27 @@ export const aiService = {
    * Generate a recipe using local Ollama (gemma:4b)
    */
   async generateRecipe(prompt: string): Promise<GeneratedRecipe> {
-    // Call local Ollama server instead of OpenAI
-    const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gemma3:4b",
-        prompt: `Create a detailed recipe based on this request: "${prompt}".\n\nPlease respond with a JSON object in exactly this format:\n{\n  "title": "Recipe Name",\n  "description": "Brief description of the recipe",\n  "ingredients": ["ingredient 1", "ingredient 2", ...],\n  "instructions": ["step 1", "step 2", ...],\n  "cookTime": "XX min",\n  "servings": number,\n  "difficulty": "Easy/Medium/Hard",\n  "category": "Main/Dessert/Appetizer/etc"\n}\n\nMake sure the response is valid JSON only, no additional text.`,
-        stream: false,
-      }),
-    });
+    // קריאה לשרת שלך במקום ל-Ollama ישירות
+    const response = await api.post("/api/ai/generate", { prompt });
+    const data = response.data;
 
-    if (!ollamaResponse.ok) {
-      // Get detailed error info from Ollama
-      const errorText = await ollamaResponse.text();
-      throw new Error(
-        `Ollama request failed: ${ollamaResponse.status} ${ollamaResponse.statusText} - ${errorText}`
-      );
+    if (!data || !data.result) {
+      throw new Error("Invalid response from AI server");
     }
-
-    // Parse Ollama response
-    const data = await ollamaResponse.json();
-    console.log("Raw Ollama response:", data.response); // Debug log
 
     let recipe;
     try {
-      // Sometimes Ollama wraps JSON in markdown code blocks, so clean it up
-      let cleanResponse = data.response.trim();
-      if (cleanResponse.startsWith("```json")) {
-        cleanResponse = cleanResponse
-          .replace(/```json\s*/, "")
-          .replace(/```\s*$/, "");
-      } else if (cleanResponse.startsWith("```")) {
-        cleanResponse = cleanResponse
-          .replace(/```\s*/, "")
-          .replace(/```\s*$/, "");
-      }
-
-      recipe = JSON.parse(cleanResponse);
+      // אם השרת מחזיר טקסט, תפרסר אותו ל-JSON
+      recipe = JSON.parse(data.result);
     } catch (e) {
-      console.error("Failed to parse Ollama JSON:", data.response); // Debug log
-      throw new Error(
-        `Failed to parse recipe JSON from Ollama response. Raw response: ${data.response.substring(
-          0,
-          200
-        )}...`
-      );
+      throw new Error("Failed to parse recipe JSON from server response");
     }
-    // Validate required fields
+
+    // בדיקת שדות חובה
     if (!recipe.title || !recipe.ingredients || !recipe.instructions) {
-      throw new Error("Invalid recipe format received from Ollama");
+      throw new Error("Invalid recipe format received from server");
     }
+
     return {
       title: recipe.title || "Generated Recipe",
       description: recipe.description || "",
