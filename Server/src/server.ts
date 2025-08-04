@@ -11,6 +11,7 @@ import connectDB from "./config/db";
 // Routes Imports
 import authRoutes from "./routes/auth";
 import recipeRoutes from "./routes/recipe";
+import reviewRoutes from "./routes/review";
 
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
@@ -37,6 +38,7 @@ app.use("/api/ai", aiRoutes);
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/recipes", recipeRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
