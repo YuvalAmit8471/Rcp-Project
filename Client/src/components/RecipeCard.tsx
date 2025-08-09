@@ -3,9 +3,10 @@ import { Recipe } from "@/types/Recipe";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Users, Heart, Eye } from "lucide-react";
+import { Clock, Users, Heart, Eye, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { reviewApi } from "@/services/reviewApi";
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -19,10 +20,33 @@ const RecipeCard = ({ recipe, onSave, onView }: RecipeCardProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  // Small rating state for the badge
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [totalReviews, setTotalReviews] = useState<number>(0);
+
   // Update local state when recipe prop changes
   useEffect(() => {
     setIsSaved(recipe.isSaved || false);
   }, [recipe.isSaved]);
+
+  // Fetch average rating for the recipe lazily
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stats = await reviewApi.getRecipeReviewStats(recipe.id);
+        if (!cancelled) {
+          setAvgRating(stats.averageRating);
+          setTotalReviews(stats.totalReviews);
+        }
+      } catch {
+        // keep silent; badge just won’t show
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipe.id]);
 
   const handleSaveToggle = async () => {
     if (!user) {
@@ -55,6 +79,15 @@ const RecipeCard = ({ recipe, onSave, onView }: RecipeCardProps) => {
         >
           {recipe.difficulty}
         </Badge>
+
+        {/* Small average rating chip */}
+        {avgRating !== null && totalReviews > 0 && (
+          <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/70 text-white px-2 py-0.5 text-xs">
+            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            <span>{avgRating.toFixed(1)}</span>
+            <span className="opacity-75">({totalReviews})</span>
+          </div>
+        )}
       </div>
 
       <CardHeader className="pb-2">
