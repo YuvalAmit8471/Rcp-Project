@@ -3,10 +3,11 @@ import { Recipe } from "@/types/Recipe";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Users, Heart, Eye, Star } from "lucide-react";
+import { Clock, Users, Heart, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { reviewApi } from "@/services/reviewApi";
+import RatingBadge from "@/components/RatingBadge";
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -81,13 +82,11 @@ const RecipeCard = ({ recipe, onSave, onView }: RecipeCardProps) => {
         </Badge>
 
         {/* Small average rating chip */}
-        {avgRating !== null && totalReviews > 0 && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/70 text-white px-2 py-0.5 text-xs">
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            <span>{avgRating.toFixed(1)}</span>
-            <span className="opacity-75">({totalReviews})</span>
-          </div>
-        )}
+        <RatingBadge
+          averageRating={avgRating}
+          totalReviews={totalReviews}
+          className="absolute top-2 left-2"
+        />
       </div>
 
       <CardHeader className="pb-2">

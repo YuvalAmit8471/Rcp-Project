@@ -5,13 +5,11 @@
 
 import api from "@/lib/api";
 import type { Review } from "@/types/Review";
-
-// Generic API response used by other services
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
+import {
+  isApiResponse,
+  isMessageOnly,
+  type ApiResponse,
+} from "./review.guards";
 
 // Server controller shapes
 interface ReviewsResponse {
@@ -25,31 +23,15 @@ interface ReviewsResponse {
   stats: { averageRating: number; totalReviews: number };
 }
 
-interface MessageOnlyResponse {
-  message: string;
-}
-
 interface SingleReviewResponse {
   message?: string;
   review: Review;
-}
-
-function isApiResponse<T>(data: unknown): data is ApiResponse<T> {
-  if (!data || typeof data !== "object") return false;
-  const obj = data as Record<string, unknown>;
-  return "success" in obj;
 }
 
 function isSingleReviewResponse(data: unknown): data is SingleReviewResponse {
   if (!data || typeof data !== "object") return false;
   const obj = data as Record<string, unknown>;
   return "review" in obj;
-}
-
-function isMessageOnly(data: unknown): data is MessageOnlyResponse {
-  if (!data || typeof data !== "object") return false;
-  const obj = data as Record<string, unknown>;
-  return "message" in obj;
 }
 
 // Lightweight in-memory cache for stats per recipe
@@ -59,9 +41,16 @@ const __reviewStatsCache = new Map<
 >();
 
 export const reviewApi = {
-  /**
-   * Fetch all reviews for a specific recipe
-   */
+  /** Clear cached stats for a recipe (or all if no recipeId provided) */
+  invalidateStats(recipeId?: string) {
+    if (recipeId) {
+      __reviewStatsCache.delete(recipeId);
+    } else {
+      __reviewStatsCache.clear();
+    }
+  },
+
+  /** Fetch all reviews for a specific recipe */
   async getRecipeReviews(recipeId: string): Promise<ReviewsResponse> {
     const { data } = await api.get(`/api/reviews/recipe/${recipeId}`);
 
@@ -95,9 +84,7 @@ export const reviewApi = {
     );
   },
 
-  /**
-   * Create a new review for a recipe
-   */
+  /** Create a new review for a recipe */
   async createReview(
     recipeId: string,
     reviewData: {
@@ -112,17 +99,21 @@ export const reviewApi = {
       reviewData
     );
 
-    if (isSingleReviewResponse(data)) return data.review;
-    if (isApiResponse<Review>(data)) return data.data;
+    if (isSingleReviewResponse(data)) {
+      __reviewStatsCache.delete(recipeId);
+      return data.review;
+    }
+    if (isApiResponse<Review>(data)) {
+      __reviewStatsCache.delete(recipeId);
+      return (data as ApiResponse<Review>).data;
+    }
 
     throw new Error(
       isMessageOnly(data) ? data.message : "Failed to create review"
     );
   },
 
-  /**
-   * Update a review
-   */
+  /** Update a review */
   async updateReview(
     reviewId: string,
     reviewData: Partial<Review>
@@ -130,20 +121,18 @@ export const reviewApi = {
     const { data } = await api.put(`/api/reviews/${reviewId}`, reviewData);
 
     if (isSingleReviewResponse(data)) return data.review;
-    if (isApiResponse<Review>(data)) return data.data;
+    if (isApiResponse<Review>(data)) return (data as ApiResponse<Review>).data;
 
     throw new Error(
       isMessageOnly(data) ? data.message : "Failed to update review"
     );
   },
 
-  /**
-   * Delete a review
-   */
+  /** Delete a review */
   async deleteReview(reviewId: string): Promise<boolean> {
     const { data } = await api.delete(`/api/reviews/${reviewId}`);
 
-    if (isApiResponse<null>(data)) return data.success;
+    if (isApiResponse<null>(data)) return (data as ApiResponse<null>).success;
     if (isMessageOnly(data)) return true;
 
     return false;

@@ -7,11 +7,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { reviewApi } from "@/services/reviewApi";
 import type { Review } from "@/types/Review";
+import StarRatingInput from "@/components/StarRatingInput";
 
 interface ReviewFormProps {
   recipeId: string;
@@ -146,27 +147,13 @@ export const ReviewForm = ({
 
   const renderStars = () => {
     return (
-      <div className="flex gap-1 mb-2">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => setRating(star)}
-            onMouseEnter={() => setHoveredRating(star)}
-            onMouseLeave={() => setHoveredRating(0)}
-            className="p-1 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
-            aria-label={`Rate ${star} star${star !== 1 ? "s" : ""}`}
-          >
-            <Star
-              className={`h-6 w-6 transition-colors duration-200 ${
-                star <= (hoveredRating || rating)
-                  ? "fill-yellow-400 text-yellow-400"
-                  : "text-gray-300 hover:text-gray-400"
-              }`}
-            />
-          </button>
-        ))}
-      </div>
+      <StarRatingInput
+        value={rating}
+        hoverValue={hoveredRating}
+        onSelect={(v) => setRating(v)}
+        onHover={(v) => setHoveredRating(v)}
+        onLeave={() => setHoveredRating(0)}
+      />
     );
   };
 

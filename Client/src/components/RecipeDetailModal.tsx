@@ -9,13 +9,15 @@ import {
 import { Recipe } from "@/types/Recipe";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Users, ChefHat, Star, Trash2, Pencil } from "lucide-react";
+import { Clock, Users, ChefHat } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { reviewApi } from "@/services/reviewApi";
 import type { Review } from "@/types/Review";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import ReviewForm from "@/components/ReviewForm";
+import StarsRating from "@/components/StarsRating";
+import ReviewItem from "@/components/ReviewItem";
 
 type Props = {
   recipe: Recipe | null;
@@ -112,19 +114,6 @@ const RecipeDetailModal = ({ recipe, isOpen, onClose }: Props) => {
 
   if (!recipe) return null;
 
-  const renderStars = (value: number) => (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`h-4 w-4 ${
-            i <= value ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-          }`}
-        />
-      ))}
-    </div>
-  );
-
   const handleDeleteReview = async (reviewId: string) => {
     try {
       await reviewApi.deleteReview(reviewId);
@@ -135,6 +124,7 @@ const RecipeDetailModal = ({ recipe, isOpen, onClose }: Props) => {
       setAvgRating(
         remaining.length ? Math.round((sum / remaining.length) * 10) / 10 : 0
       );
+      reviewApi.invalidateStats?.(recipe.id);
       toast({ title: "Review deleted" });
     } catch (e) {
       toast({ title: "Delete failed", variant: "destructive" });
@@ -154,202 +144,173 @@ const RecipeDetailModal = ({ recipe, isOpen, onClose }: Props) => {
     });
     setShowForm(false);
     setEditingReview(null);
+    reviewApi.invalidateStats?.(recipe.id);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl md:max-w-4xl pt-0 gap-0">
-        <div className="sticky top-0 z-10 -mx-6 px-6 py-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <DialogContent noPadding className="max-w-3xl md:max-w-4xl">
+        {/* Sticky header - flush with top, keeps close button reachable */}
+        <div className="sticky top-0 z-10 px-6 py-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
           <DialogHeader className="flex items-center justify-between !space-y-0">
             <DialogTitle className="text-2xl font-bold truncate pr-8">
               {recipe.title}
             </DialogTitle>
-            <DialogClose asChild>
-              <Button size="icon" variant="ghost" aria-label="Close">
-                ✕
-              </Button>
-            </DialogClose>
+            {/* Default close button lives in DialogContent (top-right) */}
           </DialogHeader>
         </div>
 
-        <img
-          src={recipe.image}
-          alt={recipe.title}
-          className="rounded-xl w-full h-56 md:h-72 object-cover mb-4"
-        />
-        <p className="text-muted-foreground mb-4">{recipe.description}</p>
+        {/* Body */}
+        <div className="p-6">
+          <img
+            src={recipe.image}
+            alt={recipe.title}
+            className="rounded-xl w-full h-56 md:h-72 object-cover mb-4"
+          />
+          <p className="text-muted-foreground mb-4">{recipe.description}</p>
 
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
-          <div className="flex items-center gap-1">
-            <Clock className="h-4 w-4" />
-            {recipe.cookTime}
-          </div>
-          <div className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            {recipe.servings} servings
-          </div>
-          <div className="flex items-center gap-1">
-            <ChefHat className="h-4 w-4" />
-            {recipe.category}
-          </div>
-          <Badge variant="secondary">{recipe.difficulty}</Badge>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Ingredients Section */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Ingredients</h3>
-            {recipe.ingredients && recipe.ingredients.length > 0 ? (
-              <ul className="space-y-2">
-                {recipe.ingredients.map((ingredient, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span className="text-sm">{ingredient}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No ingredients listed
-              </p>
-            )}
-          </div>
-
-          {/* Instructions Section */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Instructions</h3>
-            {recipe.instructions && recipe.instructions.length > 0 ? (
-              <ol className="space-y-3">
-                {recipe.instructions.map((instruction, index) => (
-                  <li key={index} className="flex gap-3">
-                    <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium shrink-0">
-                      {index + 1}
-                    </span>
-                    <span className="text-sm">{instruction}</span>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No instructions provided
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Tags Section */}
-        {recipe.tags && recipe.tags.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-3">Tags</h3>
-            <div className="flex flex-wrap gap-2">
-              {recipe.tags.map((tag, index) => (
-                <Badge key={index} variant="outline">
-                  {tag}
-                </Badge>
-              ))}
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              {recipe.cookTime}
             </div>
+            <div className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              {recipe.servings} servings
+            </div>
+            <div className="flex items-center gap-1">
+              <ChefHat className="h-4 w-4" />
+              {recipe.category}
+            </div>
+            <Badge variant="secondary">{recipe.difficulty}</Badge>
           </div>
-        )}
 
-        {/* Reviews Section */}
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Reviews</h3>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {renderStars(Math.round(avgRating))}
-                <span>
-                  {avgRating.toFixed(1)} · {totalReviews} review
-                  {totalReviews === 1 ? "" : "s"}
-                </span>
-              </div>
-              {user && (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setEditingReview(currentUserReview);
-                    setShowForm((s) => !s);
-                  }}
-                >
-                  {currentUserReview ? "Edit your review" : "Write a review"}
-                </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Ingredients Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Ingredients</h3>
+              {recipe.ingredients && recipe.ingredients.length > 0 ? (
+                <ul className="space-y-2">
+                  {recipe.ingredients.map((ingredient, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      <span className="text-sm">{ingredient}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No ingredients listed
+                </p>
+              )}
+            </div>
+
+            {/* Instructions Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Instructions</h3>
+              {recipe.instructions && recipe.instructions.length > 0 ? (
+                <ol className="space-y-3">
+                  {recipe.instructions.map((instruction, index) => (
+                    <li key={index} className="flex gap-3">
+                      <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium shrink-0">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm">{instruction}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No instructions provided
+                </p>
               )}
             </div>
           </div>
 
-          {showForm && (
-            <div className="mb-6">
-              <ReviewForm
-                recipeId={recipe.id}
-                recipeName={recipe.title}
-                existingReview={editingReview || undefined}
-                onReviewSubmitted={handleReviewSubmitted}
-                onCancel={() => {
-                  setShowForm(false);
-                  setEditingReview(null);
-                }}
-              />
+          {/* Tags Section */}
+          {recipe.tags && recipe.tags.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-3">Tags</h3>
+              <div className="flex flex-wrap gap-2">
+                {recipe.tags.map((tag, index) => (
+                  <Badge key={index} variant="outline">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Reviews list */}
-          <div className="space-y-4">
-            {loadingReviews && (
-              <p className="text-sm text-muted-foreground">
-                Loading reviews...
-              </p>
-            )}
-            {!loadingReviews && reviews.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No reviews yet. Be the first to write one!
-              </p>
-            )}
-
-            {reviews.map((r) => (
-              <div key={r.id} className="rounded-lg border p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {renderStars(r.rating)}
-                    <div>
-                      <p className="text-sm font-medium">
-                        {r.username || r.userId?.username || "User"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {r.createdAt
-                          ? new Date(r.createdAt).toLocaleDateString()
-                          : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  {user &&
-                    (r.createdBy === user.id || r.userId?._id === user.id) && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditingReview(r);
-                            setShowForm(true);
-                          }}
-                          aria-label="Edit review"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteReview(r.id)}
-                          aria-label="Delete review"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+          {/* Reviews Section */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Reviews</h3>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <StarsRating value={Math.round(avgRating)} />
+                  <span>
+                    {avgRating.toFixed(1)} · {totalReviews} review
+                    {totalReviews === 1 ? "" : "s"}
+                  </span>
                 </div>
-                <p className="text-sm mt-3 whitespace-pre-wrap">{r.comment}</p>
+                {user && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditingReview(currentUserReview);
+                      setShowForm((s) => !s);
+                    }}
+                  >
+                    {currentUserReview ? "Edit your review" : "Write a review"}
+                  </Button>
+                )}
               </div>
-            ))}
+            </div>
+
+            {showForm && (
+              <div className="mb-6">
+                <ReviewForm
+                  recipeId={recipe.id}
+                  recipeName={recipe.title}
+                  existingReview={editingReview || undefined}
+                  onReviewSubmitted={handleReviewSubmitted}
+                  onCancel={() => {
+                    setShowForm(false);
+                    setEditingReview(null);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Reviews list */}
+            <div className="space-y-4">
+              {loadingReviews && (
+                <p className="text-sm text-muted-foreground">
+                  Loading reviews...
+                </p>
+              )}
+              {!loadingReviews && reviews.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No reviews yet. Be the first to write one!
+                </p>
+              )}
+
+              {reviews.map((r) => (
+                <ReviewItem
+                  key={r.id}
+                  review={r}
+                  canEdit={Boolean(
+                    user &&
+                      (r.createdBy === user.id || r.userId?._id === user.id)
+                  )}
+                  onEdit={(rev) => {
+                    setEditingReview(rev);
+                    setShowForm(true);
+                  }}
+                  onDelete={handleDeleteReview}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </DialogContent>
